@@ -21,7 +21,6 @@ func (Sess *Session) init() {
 
 func (Sess *Session) close() {
 	Sess.conn.Close()
-
 	Server.Session_Delete(Sess.token)
 
 	for key := range Sess.Join_Rooms {
@@ -34,6 +33,8 @@ func (Sess *Session) JoinRoom(Room_Id int, Join_Id int) {
 
 	if _, Exist := Server.Rooms[Room_Id]; !Exist {
 		Server.Room_Create(Room_Id)
+	} else if _, Exist := Server.Rooms[Room_Id].conn_list[Join_Id]; Exist {
+		return
 	}
 	Server.Rooms[Room_Id].Create_Conn(Join_Id, Sess.conn)
 }
@@ -58,8 +59,15 @@ func (Sess *Session) LeaveRoom(Room_Id int) {
 
 	Sess.Remove_JoinRoom(Room_Id)
 }
+func (Sess *Session) Get_Join_Rooms() []int {
+	rooms := []int{}
+	for key := range Sess.Join_Rooms {
+		rooms = append(rooms, key)
+	}
+	return rooms
+}
 
-func (Sess *Session) Read() {
+func (Sess *Session) read() {
 	defer Sess.close()
 	for {
 		_, data, err := Sess.conn.ReadMessage()
@@ -67,11 +75,21 @@ func (Sess *Session) Read() {
 			fmt.Println(err)
 			break
 		}
+
 		req := Standard{}
 		err = json.Unmarshal(data, &req)
 		if err != nil {
 			continue
 		}
+
 		fmt.Println(req)
+		HandMsg(&req, Sess)
+	}
+}
+func (p *Session) Send_Msg(data Standard) {
+	err := p.conn.WriteMessage(websocket.TextMessage, []byte(data.ToString()))
+	if err != nil {
+		fmt.Println(err)
+		p.close()
 	}
 }

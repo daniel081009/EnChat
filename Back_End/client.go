@@ -27,8 +27,21 @@ func main() {
 		return
 	}
 	fmt.Println(conn.RemoteAddr().String())
-	Send_Msg(conn, socket.Standard{Type: "JoinRoom", Data: 1})
+	go func() {
+		for {
+			type_data, data := "", ""
+			fmt.Print(">")
+			fmt.Scanf("%s %s", &type_data, &data)
+			Send_Msg(conn, socket.Standard{Type: type_data, Data: data})
+		}
+	}()
 	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
+		fmt.Println(string(message))
 	}
 	defer conn.Close()
 }

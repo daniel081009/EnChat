@@ -15,7 +15,15 @@ import (
 
 type Standard struct {
 	Type string
-	Data interface{}
+	Data string
+}
+
+func (s *Standard) StringTo(d interface{}) error {
+	err := json.Unmarshal([]byte(s.Data), d)
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 func (s Standard) ToString() string {
@@ -51,17 +59,16 @@ func Socket(ctx *gin.Context) {
 	Token_string := ctx.Request.URL.Query().Get("Token")
 	Token_data, _ := Token.CheckJWT(Token_string)
 
-	fmt.Println("New Connection:", Token_data.UserID)
 	Server.Session_Create(&Session{token: Token_string, conn: conn, userinfo: Token_data})
 
 	join_room_list := []DB.Join_Room{}
 	DB.GetDB().Where("user_id=?", Token_data.UserID).Find(&join_room_list)
+
 	for _, data := range join_room_list {
-		fmt.Println("Join Room:", data.Room_Id)
 		Server.Sessions[Token_string].JoinRoom(data.Room_Id, data.ID)
 	}
 
-	go Server.Sessions[Token_string].Read()
+	go Server.Sessions[Token_string].read()
 
 	// for { // 로그용
 	// 	fmt.Println(len(Server.Rooms), Server.Rooms)
